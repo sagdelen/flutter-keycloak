@@ -1,14 +1,12 @@
 /// -----------------------------------
 ///          External Packages
 /// -----------------------------------
-
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-
-import 'package:http/http.dart' as http;
 import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
 final FlutterAppAuth appAuth = FlutterAppAuth();
 const FlutterSecureStorage secureStorage = FlutterSecureStorage();
@@ -16,12 +14,15 @@ const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 /// -----------------------------------
 ///           Auth0 Variables
 /// -----------------------------------
-
-const String AUTH0_DOMAIN = 'YOUR-AUTH0-DOMAIN';
-const String AUTH0_CLIENT_ID = 'YOUR-AUTH0-CLIENT-ID';
+// http://YOUR-AUTH0-DOMAIN/.well-known/openid-configuration
+// http://localhost:8080/realms/opis/.well-known/openid-configuration
+// http://localhost:8080/realms/opis
+// http://localhost:8080/realms/opis/protocol/openid-connect/userinfo
+const String AUTH0_DOMAIN = '192.168.1.6:8080/realms/opis';
+const String AUTH0_CLIENT_ID = 'b2c';
 
 const String AUTH0_REDIRECT_URI = 'com.auth0.flutterdemo://login-callback';
-const String AUTH0_ISSUER = 'https://$AUTH0_DOMAIN';
+const String AUTH0_ISSUER = 'http://$AUTH0_DOMAIN';
 
 /// -----------------------------------
 ///           Profile Widget
@@ -55,7 +56,7 @@ class Profile extends StatelessWidget {
         const SizedBox(height: 24),
         Text('Name: $name'),
         const SizedBox(height: 48),
-        RaisedButton(
+        ElevatedButton(
           onPressed: () async {
             await logoutAction();
           },
@@ -81,7 +82,7 @@ class Login extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
-        RaisedButton(
+        ElevatedButton(
           onPressed: () async {
             await loginAction();
           },
@@ -144,12 +145,18 @@ class _MyAppState extends State<MyApp> {
         utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
   }
 
+// http://localhost:8080/realms/opis/protocol/openid-connect/userinfo
   Future<Map<String, Object>> getUserDetails(String accessToken) async {
-    const String url = 'https://$AUTH0_DOMAIN/userinfo';
-    final http.Response response = await http.get(
-      url,
-      headers: <String, String>{'Authorization': 'Bearer $accessToken'},
-    );
+    const String url = 'http://$AUTH0_DOMAIN/protocol/openid-connect/userinfo';
+    http.Response response;
+    try {
+      response = await http.get(
+        url,
+        headers: <String, String>{'Authorization': 'Bearer $accessToken'},
+      );
+    } on Exception catch (e, s) {
+      debugPrint('login error: $e - stack: $s');
+    }
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -170,7 +177,7 @@ class _MyAppState extends State<MyApp> {
         AuthorizationTokenRequest(
           AUTH0_CLIENT_ID,
           AUTH0_REDIRECT_URI,
-          issuer: 'https://$AUTH0_DOMAIN',
+          issuer: 'http://$AUTH0_DOMAIN',
           scopes: <String>['openid', 'profile', 'offline_access'],
           // promptValues: ['login']
         ),
